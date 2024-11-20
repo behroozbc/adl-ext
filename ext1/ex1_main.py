@@ -13,8 +13,8 @@ from torchvision import datasets, transforms
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a neural network to classify CIFAR10')
-    parser.add_argument('--model', type=str, default='r18', help='model to train (default: r18)')
-    parser.add_argument('--batch-size', type=int, default=64, help='input batch size for training (default: 64)')
+    parser.add_argument('--model', type=str, default='vit', help='model to train (default: r18)')
+    parser.add_argument('--batch-size', type=int, default=512, help='input batch size for training (default: 64)')
     parser.add_argument('--epochs', type=int, default=50, help='number of epochs to train (default: 5)')
     parser.add_argument('--lr', type=float, default=0.003, help='learning rate (default: 0.003)')
     parser.add_argument('--momentum', type=float, default=0.9, help='SGD momentum (default: 0.9)')
