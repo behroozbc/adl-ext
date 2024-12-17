@@ -11,23 +11,23 @@ def linear_beta_schedule(beta_start, beta_end, timesteps):
     return torch.linspace(beta_start, beta_end, timesteps)
 
 
-# TODO: Transform into task for students
 def cosine_beta_schedule(timesteps, s=0.008):
     """
-    cosine schedule as proposed in https://arxiv.org/abs/2102.09672
+    Cosine schedule as proposed in https://arxiv.org/abs/2102.09672.
     """
-    # TODO (2.3): Implement cosine beta/variance schedule as discussed in the paper mentioned above
-    pass
+    steps = torch.linspace(0, timesteps, timesteps + 1, dtype=torch.float32)
+    alphas_cumprod = torch.cos(((steps / timesteps) + s) / (1 + s) * torch.pi / 2) ** 2
+    alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
+    betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
+    return torch.clip(betas, 0, 0.999)
 
-
-def sigmoid_beta_schedule(beta_start, beta_end, timesteps):
+def sigmoid_beta_schedule(beta_start, beta_end, timesteps, slimit=6):
     """
-    sigmoidal beta schedule - following a sigmoid function
+    Sigmoidal beta schedule - following a sigmoid function.
     """
-    # TODO (2.3): Implement a sigmoidal beta schedule. Note: identify suitable limits of where you want to sample the sigmoid function.
-    # Note that it saturates fairly fast for values -x << 0 << +x
-    pass
-
+    steps = torch.linspace(-slimit, slimit, timesteps)
+    betas = beta_start + torch.sigmoid(steps) * (beta_end - beta_start)
+    return betas
 
 
 
