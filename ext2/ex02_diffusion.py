@@ -29,67 +29,95 @@ def sigmoid_beta_schedule(beta_start, beta_end, timesteps):
     pass
 
 
-class Diffusion:
 
-    # TODO (2.4): Adapt all methods in this class for the conditional case. You can use y=None to encode that you want to train the model fully unconditionally.
+
+class Diffusion:
+    
+        # TODO (2.4): Adapt all methods in this class for the conditional case. You can use y=None to encode that you want to train the model fully unconditionally.
 
     def __init__(self, timesteps, get_noise_schedule, img_size, device="cuda"):
         """
         Takes the number of noising steps, a function for generating a noise schedule as well as the image size as input.
         """
         self.timesteps = timesteps
-
         self.img_size = img_size
         self.device = device
 
-        # define beta schedule
-        self.betas = get_noise_schedule(self.timesteps)
+        # Define beta schedule
+        self.betas = get_noise_schedule(self.timesteps).to(self.device)
+        
+        # Calculate alphas and alpha_cumprod (cumulative product)
+        self.alphas = 1.0 - self.betas
+        self.alpha_cumprod = torch.cumprod(self.alphas, dim=0)
 
-        # TODO (2.2): Compute the central values for the equation in the forward pass already here so you can quickly use them in the forward pass.
-        # Note that the function torch.cumprod may be of help
-
-        # define alphas
-        # TODO
-
-        # calculations for diffusion q(x_t | x_{t-1}) and others
-        # TODO
-
-        # calculations for posterior q(x_{t-1} | x_t, x_0)
-        # TODO
+        # Precompute square roots for forward and reverse diffusion
+        self.sqrt_alpha_cumprod = torch.sqrt(self.alpha_cumprod)
+        self.sqrt_one_minus_alpha_cumprod = torch.sqrt(1.0 - self.alpha_cumprod)
+        self.one_by_sqrt_alpha = 1.0 / torch.sqrt(self.alphas)
 
     @torch.no_grad()
     def p_sample(self, model, x, t, t_index):
-        # TODO (2.2): implement the reverse diffusion process of the model for (noisy) samples x and timesteps t. Note that x and t both have a batch dimension
+        """
+        Perform a single reverse step: p(x_{t-1} | x_t)
+        Equation (8): xt-1 = 1/sqrt(alpha_t) * (x_t - beta_t / sqrt(1-alpha_cumprod) * epsilon_theta) + sqrt(beta_t) * z
+        """
+        # Predict the noise using the model
+        epsilon_theta = model(x, t)
+        beta_t = self.betas[t_index]
+        sqrt_one_minus_alpha_cumprod_t = self.sqrt_one_minus_alpha_cumprod[t_index]
+        one_by_sqrt_alpha_t = self.one_by_sqrt_alpha[t_index]
 
-        # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean
+        # Compute the mean of the reverse process
+        mean = one_by_sqrt_alpha_t * (x - beta_t / sqrt_one_minus_alpha_cumprod_t * epsilon_theta)
+        
+        # Add noise z ~ N(0, I) unless at timestep 0
+        if t_index > 0:
+            z = torch.randn_like(x)
+            mean += torch.sqrt(beta_t) * z
 
-        # TODO (2.2): The method should return the image at timestep t-1.
-        pass
+        return mean
 
-    # Algorithm 2 (including returning all images)
     @torch.no_grad()
     def sample(self, model, image_size, batch_size=16, channels=3):
-        # TODO (2.2): Implement the full reverse diffusion loop from random noise to an image, iteratively ''reducing'' the noise in the generated image.
+        """
+        Full sampling process: Start from random noise and iteratively denoise.
+        """
+        x = torch.randn(batch_size, channels, image_size, image_size).to(self.device)
 
-        # TODO (2.2): Return the generated images
-        pass
+        for t_index in reversed(range(0, self.timesteps)):
+            t = torch.full((batch_size,), t_index, dtype=torch.long, device=self.device)
+            x = self.p_sample(model, x, t, t_index)
+        
+        return x
 
-    # forward diffusion (using the nice property)
     def q_sample(self, x_zero, t, noise=None):
-        # TODO (2.2): Implement the forward diffusion process using the beta-schedule defined in the constructor; if noise is None, you will need to create a new noise vector, otherwise use the provided one.
-        pass
+        """
+        Forward diffusion process: Generate a noisy sample x_t at timestep t from x_0.
+        Equation (4): x_t = sqrt(alpha_cumprod_t) * x_0 + sqrt(1-alpha_cumprod_t) * noise
+        """
+        if noise is None:
+            noise = torch.randn_like(x_zero)
+        
+        sqrt_alpha_cumprod_t = self.sqrt_alpha_cumprod[t][:, None, None, None]
+        sqrt_one_minus_alpha_cumprod_t = self.sqrt_one_minus_alpha_cumprod[t][:, None, None, None]
+
+        return sqrt_alpha_cumprod_t * x_zero + sqrt_one_minus_alpha_cumprod_t * noise
 
     def p_losses(self, denoise_model, x_zero, t, noise=None, loss_type="l1"):
-        # TODO (2.2): compute the input to the network using the forward diffusion process and predict the noise using the model; if noise is None, you will need to create a new noise vector, otherwise use the provided one.
-
+        """
+        Compute the loss for the denoising process.
+        """
+        if noise is None:
+            noise = torch.randn_like(x_zero)
+        
+        x_noisy = self.q_sample(x_zero, t, noise)
+        predicted_noise = denoise_model(x_noisy, t)
+        
         if loss_type == 'l1':
-            # TODO (2.2): implement an L1 loss for this task
-            loss = None
+            loss = F.l1_loss(predicted_noise, noise)
         elif loss_type == 'l2':
-            # TODO (2.2): implement an L2 loss for this task
-            loss = None
+            loss = F.mse_loss(predicted_noise, noise)
         else:
-            raise NotImplementedError()
-
+            raise NotImplementedError("Unknown loss type")
+        
         return loss
