@@ -32,16 +32,42 @@ def parse_args():
     return parser.parse_args()
 
 
-def sample_and_save_images(n_images, diffusor, model, device, store_path):
-    # TODO: Implement - adapt code and method signature as needed
-    pass
+def sample_and_save_images(n_images, diffusor, model, device, store_path, image_size=32):
+    """
+    Generate and save images using the trained diffusion model.
+    """
+    model.eval()
+    with torch.no_grad():
+        images = diffusor.sample(model, image_size=image_size, batch_size=n_images, channels=3)
+        images = (images.clamp(-1, 1) + 1) / 2  # Scale back to [0, 1]
+        save_image(images, os.path.join(store_path, "generated_images.png"))
+    print(f"Generated images saved to {store_path}")
 
+def test(model, testloader, diffusor, device, args, save_path):
+    """
+    Test the model on a test dataset.
+    
+    1. Compute loss over the test set at specific timesteps.
+    2. Generate and save images.
+    """
+    model.eval()
+    total_loss = 0.0
+    timesteps = args.timesteps
+    save_images = True  # Generate visualizations
 
-def test(model, testloader, diffusor, device, args):
-    # TODO: Implement - adapt code and method signature as needed
-    pass
+    pbar = tqdm(testloader, desc="Testing")
+    for step, (images, labels) in enumerate(pbar):
+        images = images.to(device)
+        t = torch.randint(0, timesteps, (len(images),), device=device).long()
+        loss = diffusor.p_losses(model, images, t, loss_type="l2")
+        total_loss += loss.item()
 
+        if save_images and step == 0:  # Save generated images for the first batch
+            sample_and_save_images(8, diffusor, model, device, save_path)
+            save_images = False  # Only generate once
 
+    avg_loss = total_loss / len(testloader)
+    print(f"Test set average loss: {avg_loss:.6f}")
 def train(model, trainloader, optimizer, diffusor, epoch, device, args):
     batch_size = args.batch_size
     timesteps = args.timesteps
@@ -100,13 +126,13 @@ def run(args):
         ToPILImage(),
     ])
 
-    dataset = datasets.CIFAR10('/proj/aimi-adl/CIFAR10/', download=True, train=True, transform=transform)
+    dataset = datasets.CIFAR10('/ext2/CIFAR10', download=True, train=True, transform=transform)
     trainset, valset = torch.utils.data.random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - int(len(dataset) * 0.9)])
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
     valloader = DataLoader(valset, batch_size=batch_size, shuffle=False)
 
     # Download and load the test data
-    testset = datasets.CIFAR10('/proj/aimi-adl/CIFAR10/', download=True, train=False, transform=transform)
+    testset = datasets.CIFAR10('/ext2/CIFAR10', download=True, train=False, transform=transform)
     testloader = DataLoader(testset, batch_size=int(batch_size/2), shuffle=True)
 
     for epoch in range(epochs):
@@ -115,7 +141,7 @@ def run(args):
 
     test(model, testloader, diffusor, device, args)
 
-    save_path = "<path/to/my/images>"  # TODO: Adapt to your needs
+    save_path = "/ext2/output"  # TODO: Adapt to your needs
     n_images = 8
     sample_and_save_images(n_images, diffusor, model, device, save_path)
     torch.save(model.state_dict(), os.path.join("/proj/aimi-adl/models", args.run_name, f"ckpt.pt"))
