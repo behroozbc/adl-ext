@@ -144,7 +144,7 @@ def run(args):
     save_path = "/ext2/output"  # TODO: Adapt to your needs
     n_images = 8
     sample_and_save_images(n_images, diffusor, model, device, save_path)
-    torch.save(model.state_dict(), os.path.join("/proj/aimi-adl/models", args.run_name, f"ckpt.pt"))
+    torch.save(model.state_dict(), os.path.join("/ext2/models", args.run_name, f"ckpt.pt"))
 
 
 if __name__ == '__main__':

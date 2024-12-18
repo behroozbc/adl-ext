@@ -186,13 +186,15 @@ class Unet(nn.Module):
         channels=3,
         resnet_block_groups=4,
         class_free_guidance=False,  # TODO: Incorporate in your code
-        p_uncond=None,
+        p_uncond=0.1,
+        # p_uncond=None,
         num_classes=None,
     ):
         super().__init__()
 
         # determine dimensions
         self.channels = channels
+        self.class_free_guidance = class_free_guidance
         input_channels = channels   # adapted from the original source
 
         init_dim = default(init_dim, dim)
@@ -214,7 +216,9 @@ class Unet(nn.Module):
         )
 
         # TODO: Implement a class embedder for the conditional part of the classifier-free guidance & define a default
-
+        if class_free_guidance and num_classes:
+            self.class_embed = nn.Embedding(num_classes, time_dim)
+            self.null_class_embed = nn.Parameter(torch.randn(time_dim))
 
         # layers
         self.downs = nn.ModuleList([])
@@ -264,10 +268,10 @@ class Unet(nn.Module):
         self.final_res_block = block_klass(dim * 2, dim, time_emb_dim=time_dim)
         self.final_conv = nn.Conv2d(dim, self.out_dim, 1)
 
-    def forward(self, x, time):
+    def forward(self, x, time, class_labels=None):
 
-        x = self.init_conv(x)
-        r = x.clone()
+        # x = self.init_conv(x)
+        # r = x.clone()
 
         t = self.time_mlp(time)
 
@@ -275,15 +279,29 @@ class Unet(nn.Module):
         #  - for each element in the batch, the class embedding is replaced with the null token with a certain probability during training
         #  - during testing, you need to have control over whether the conditioning is applied or not
         #  - analogously to the time embedding, the class embedding is provided in every ResNet block as additional conditioning
-
+ 
+        if self.class_free_guidance and class_labels is not None:
+            if self.training:
+                mask = torch.rand(class_labels.shape, device=x.device) < self.p_uncond
+                c_emb = torch.where(mask.unsqueeze(-1), self.null_class_embed, self.class_embed(class_labels))
+            else:
+                c_emb = self.class_embed(class_labels)
+        else:
+            c_emb = None
+  
+ 
+        x = self.init_conv(x)
+        r = x.clone()
 
         h = []
 
         for block1, block2, attn, downsample in self.downs:
-            x = block1(x, t)
+            # x = block1(x, t)
+            x = block1(x, t, c_emb)
             h.append(x)
 
-            x = block2(x, t)
+            # x = block2(x, t)
+            x = block2(x, t, c_emb)
             x = attn(x)
             h.append(x)
 
@@ -295,15 +313,26 @@ class Unet(nn.Module):
 
         for block1, block2, attn, upsample in self.ups:
             x = torch.cat((x, h.pop()), dim=1)
-            x = block1(x, t)
+            # x = block1(x, t)
+            x = block1(x, t, c_emb)
+
 
             x = torch.cat((x, h.pop()), dim=1)
-            x = block2(x, t)
+            # x = block2(x, t)
+            x = block2(x, t, c_emb)
+
             x = attn(x)
 
             x = upsample(x)
 
         x = torch.cat((x, r), dim=1)
 
-        x = self.final_res_block(x, t)
+        # x = self.final_res_block(x, t)
+        x = self.final_res_block(x, t, c_emb)
+
         return self.final_conv(x)
+
+
+
+
+
