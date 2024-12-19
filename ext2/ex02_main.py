@@ -12,7 +12,7 @@ import os
 from ex02_model import Unet
 from ex02_diffusion import Diffusion, linear_beta_schedule
 from torchvision.utils import save_image
-
+from datasets import load_dataset
 import argparse
 
 
@@ -29,6 +29,7 @@ def parse_args():
     parser.add_argument('--save_model', action='store_true', default=False, help='For Saving the current Model')
     parser.add_argument('--run_name', type=str, default="DDPM")
     parser.add_argument('--dry_run', action='store_true', default=False, help='quickly check a single pass')
+    parser.add_argument('--idm',type=str)
     return parser.parse_args()
 
 
@@ -93,9 +94,9 @@ def train(model, trainloader, optimizer, diffusor, epoch, device, args):
             break
 
 
-def test(args):
-    # TODO (2.2): implement testing functionality, including generation of stored images.
-    pass
+# def test(args):
+#     # TODO (2.2): implement testing functionality, including generation of stored images.
+#     pass
 
 
 def run(args):
@@ -126,13 +127,17 @@ def run(args):
         ToPILImage(),
     ])
 
-    dataset = datasets.CIFAR10('/ext2/CIFAR10', download=True, train=True, transform=transform)
+    dataset = datasets.CIFAR10('datasets', download=True, train=True, transform=transform)
+    if args.idm is not None:
+        dataset=load_dataset("huggan/smithsonian_butterflies_subset", cache_dir=f"/proj/ciptmp/{args.idm}/datasets/", split="train")
     trainset, valset = torch.utils.data.random_split(dataset, [int(len(dataset) * 0.9), len(dataset) - int(len(dataset) * 0.9)])
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
     valloader = DataLoader(valset, batch_size=batch_size, shuffle=False)
 
     # Download and load the test data
-    testset = datasets.CIFAR10('/ext2/CIFAR10', download=True, train=False, transform=transform)
+    testset = datasets.CIFAR10('datasets', download=True, train=False, transform=transform)
+    if args.idm is not None:
+        dataset=load_dataset("huggan/smithsonian_butterflies_subset", cache_dir=f"/proj/ciptmp/{args.idm}/datasets/", split="test")
     testloader = DataLoader(testset, batch_size=int(batch_size/2), shuffle=True)
 
     for epoch in range(epochs):
