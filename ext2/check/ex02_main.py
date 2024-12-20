@@ -36,9 +36,9 @@ def parse_args():
     return parser.parse_args()
 
 
-def sample_and_save_images(n_images, diffusor, model, device, save_path, reverse_transform, class_tokens, class_free_guidance, weight):
+def sample_and_save_images(n_images, diffusor, model, device, save_path, reverse_transform, class_tokens, class_free_guidance):
     # TODO: Implement - adapt code and method signature as needed
-    imgs = diffusor.sample(model, image_size=32, batch_size=n_images, channels=3, class_token=class_tokens, class_free_guidance=class_free_guidance, weight=weight)
+    imgs = diffusor.sample(model, image_size=32, batch_size=n_images, channels=3, class_token=class_tokens, class_free_guidance=class_free_guidance)
     # save images in store_path
     for i in range(n_images):
         image = reverse_transform(imgs[-1][i])
@@ -186,8 +186,7 @@ def run(args):
     n_images = 10
     # write 5 times the same class token
     class_tokens = [0,1,2,3,4,5,6,7,8,9] # np.tile([1,2,3,4,5,6,7,8,9,10],5).tolist()
-    weight = 0.0
-    sample_and_save_images(n_images, diffusor, model, device, save_path, reverse_transform, class_tokens, class_free_guidance, weight)
+    sample_and_save_images(n_images, diffusor, model, device, save_path, reverse_transform, class_tokens, class_free_guidance)
     torch.save(model.state_dict(), f"model_{epoch}_ckpt.pt")
     
 

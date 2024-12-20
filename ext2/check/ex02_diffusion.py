@@ -95,7 +95,7 @@ class Diffusion:
 
     # Algorithm 2 (including returning all images)
     @torch.no_grad()
-    def sample(self, model, image_size, batch_size=16, channels=3, class_token=None, class_free_guidance=False, weight=0):
+    def sample(self, model, image_size, batch_size=16, channels=3, class_token=None, class_free_guidance=False, weight=0.0):
         # TODO (2.2): Implement the full reverse diffusion loop from random noise to an image,
         #  iteratively ''reducing'' the noise in the generated image.
 
