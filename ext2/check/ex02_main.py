@@ -96,7 +96,7 @@ def test(model, testloader, diffusor, device, args, save_path):
     for step, (images, labels) in enumerate(pbar):
         images = images.to(device)
         t = torch.randint(0, timesteps, (len(images),), device=device).long()
-        loss = diffusor.p_losses(model, images, t, loss_type="l2")
+        loss = diffusor.p_losses(model, images, t, loss_type="l2",labels=labels)
         total_loss += loss.item()
 
         if save_images and step == 0:  # Save generated images for the first batch
@@ -145,7 +145,7 @@ def run(args):
     num_classes = 10
 
 
-    model = Unet(dim=image_size, channels=channels, dim_mults=(1, 2, 4,), p_uncond=p_uncond, class_free_guidance=class_free_guidance, num_classes=num_classes).to(device)
+    model = Unet(dim=image_size, channels=channels, dim_mults=(1, 2, 4,),class_free_guidance=class_free_guidance, p_uncond=p_uncond,  num_classes=num_classes).to(device)
     optimizer = AdamW(model.parameters(), lr=args.lr)
     # TODO adapt scheduler
     # my_scheduler = lambda x: sigmoid_beta_schedule(0.0001, 0.02, x)

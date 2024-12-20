@@ -90,9 +90,8 @@ class Diffusion:
         z = torch.randn_like(x) if t_index > 0 else 0
 
         # TODO (2.2): The method should return the image at timestep t-1.
-        x_t_minus_1 = (alpha_reciprocal_t * (x - beta_t * predicted_noise / one_minus_alpha_bar_sqrt_t)
+        return (alpha_reciprocal_t * (x - beta_t * predicted_noise / one_minus_alpha_bar_sqrt_t)
                        + beta_sqrt_t * z)
-        return x_t_minus_1
 
     # Algorithm 2 (including returning all images)
     @torch.no_grad()
