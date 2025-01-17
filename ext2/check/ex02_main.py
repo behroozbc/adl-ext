@@ -79,31 +79,31 @@ def val(model, valloader, diffusor, device, epoch, args):
 
     # Set the model back to training mode
     model.train()
-def test(model, testloader, diffusor, device, args, save_path):
-    """
-    Test the model on a test dataset.
+# def test(model, testloader, diffusor, device, args, save_path):
+#     """
+#     Test the model on a test dataset.
     
-    1. Compute loss over the test set at specific timesteps.
-    2. Generate and save images.
-    """
-    model.eval()
-    total_loss = 0.0
-    timesteps = args.timesteps
-    save_images = True  # Generate visualizations
+#     1. Compute loss over the test set at specific timesteps.
+#     2. Generate and save images.
+#     """
+#     model.eval()
+#     total_loss = 0.0
+#     timesteps = args.timesteps
+#     save_images = True  # Generate visualizations
 
-    pbar = tqdm(testloader, desc="Testing")
-    for step, (images, labels) in enumerate(pbar):
-        images = images.to(device)
-        t = torch.randint(0, timesteps, (len(images),), device=device).long()
-        loss = diffusor.p_losses(model, images, t, loss_type="l2",labels=labels)
-        total_loss += loss.item()
+#     pbar = tqdm(testloader, desc="Testing")
+#     for step, (images, labels) in enumerate(pbar):
+#         images = images.to(device)
+#         t = torch.randint(0, timesteps, (len(images),), device=device).long()
+#         loss = diffusor.p_losses(model, images, t, loss_type="l2",labels=labels)
+#         total_loss += loss.item()
 
-        if save_images and step == 0:  # Save generated images for the first batch
-            sample_and_save_images(8, diffusor, model, device, save_path)
-            save_images = False  # Only generate once
+#         if save_images and step == 0:  # Save generated images for the first batch
+#             sample_and_save_images(8, diffusor, model, device, save_path)
+#             save_images = False  # Only generate once
 
-    avg_loss = total_loss / len(testloader)
-    print(f"Test set average loss: {avg_loss:.6f}")
+#     avg_loss = total_loss / len(testloader)
+#     print(f"Test set average loss: {avg_loss:.6f}")
 
 def train(model, trainloader, optimizer, diffusor, epoch, device, args):
     batch_size = args.batch_size
@@ -179,7 +179,7 @@ def run(args):
         train(model, trainloader, optimizer, diffusor, epoch, device, args)
         val(model, valloader, diffusor, device, epoch, args)
 
-    test(model, testloader, diffusor, device, args)
+    # test(model, testloader, diffusor, device, args)
 
     save_path = "output"  # TODO: Adapt to your needs
     n_images = 10
