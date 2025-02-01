@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+import torch.nn.functional as F
 
 class Swish(nn.Module):
     def forward(self, x):
@@ -33,10 +33,26 @@ class ShallowCNN(nn.Module):
 
     def get_logits(self, x):
         # TODO (3.2): Implement classification procedure that outputs the logits across the classes
-        #  Consider using F.adaptive_avg_pool2d to convert between the 2D features and a linear representation.
-        pass
+
+        x = self.cnn_layers(x)
+
+        # Convert 2D features to a linear representation
+        x = F.adaptive_avg_pool2d(x, (1, 1))
+
+        # Pass through fully connected layers to get logits
+        logits = self.fc_layers(x)
+        return logits
 
     def forward(self, x, y=None) -> torch.Tensor:
-        # TODO (3.2): Implement forward function for (1) Unconditional JEM (EBM), (2) Conditional JEM.
+        # TODO (3.2): Implement forward function for (1) EBM, (2) Unconditional JEM, (3) Conditional JEM.
+        #  Consider using F.adaptive_avg_pool2d to convert between the 2D features and a linear representation.
         #  (You can also reuse your implementation of 'self.get_logits(x)' if this helps you.)
-        pass
+
+        logits = self.get_logits(x)
+        if y is None:
+            # EBM / Unconditional JEM: Calculate logsumexp across all class logits
+            return torch.logsumexp(logits, dim=1)
+        else:
+            # Conditional JEM: Calculate log probability of the given class
+            return logits.gather(1, y.view(-1, 1)).squeeze(1)
+
